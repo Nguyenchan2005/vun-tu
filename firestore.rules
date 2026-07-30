@@ -1,0 +1,23 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isOwner(userId) {
+      return request.auth != null
+             && request.auth.uid == userId
+             // Before deploying, replace the text below with the UID of the
+             // single user created in Firebase Authentication.
+             && request.auth.uid == "9EjRHwMEZEWk65OInP4fj7xTqsS2";
+    }
+
+    // Every synced document lives below the one allowed Firebase user's UID.
+    // A second account cannot use this project's Firestore quota.
+    match /users/{userId}/{document=**} {
+      allow read, write: if isOwner(userId);
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
