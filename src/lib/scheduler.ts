@@ -1,5 +1,10 @@
-export const REVIEW_INTERVAL_DAYS = [3, 7, 30, 90, 180] as const
-export const FORGOT_RETRY_MINUTES = 10
+export const REVIEW_INTERVALS = [
+  { unit: 'day', amount: 3 },
+  { unit: 'day', amount: 7 },
+  { unit: 'month', amount: 1 },
+  { unit: 'month', amount: 3 },
+  { unit: 'month', amount: 6 },
+] as const
 
 export type SchedulerRating =
   | 'forgot'
