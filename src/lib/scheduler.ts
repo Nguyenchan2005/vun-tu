@@ -1,4 +1,4 @@
-export const REVIEW_INTERVAL_DAYS = [1, 3, 7, 14, 30, 60] as const
+export const REVIEW_INTERVAL_DAYS = [3, 7, 30, 90, 180] as const
 export const FORGOT_RETRY_MINUTES = 10
 
 export type SchedulerRating =
