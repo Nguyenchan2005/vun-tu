@@ -62,14 +62,39 @@ function normalizeDate(value: Date | string | number): Date {
 
   return date
 }
-function normalizeDate(value: Date | string | number): Date {
-  const date = value instanceof Date ? new Date(value) : new Date(value)
+function addDays(date: Date, days: number): Date {
+  const result = new Date(date)
+  result.setDate(result.getDate() + days)
+  return result
+}
 
-  if (Number.isNaN(date.getTime())) {
-    throw new RangeError('Thời điểm ôn tập không hợp lệ.')
+function addMonths(date: Date, months: number): Date {
+  const result = new Date(date)
+
+  const originalDay = result.getDate()
+
+  result.setDate(1)
+  result.setMonth(result.getMonth() + months)
+
+  const lastDayOfTargetMonth = new Date(
+    result.getFullYear(),
+    result.getMonth() + 1,
+    0,
+  ).getDate()
+
+  result.setDate(Math.min(originalDay, lastDayOfTargetMonth))
+
+  return result
+}
+function addReviewInterval(
+  date: Date,
+  interval: (typeof REVIEW_INTERVALS)[number],
+): Date {
+  if (interval.unit === 'day') {
+    return addDays(date, interval.amount)
   }
 
-  return date
+  return addMonths(date, interval.amount)
 }
 export function createInitialReviewState(
   now: Date | string | number = new Date(),
@@ -107,24 +132,28 @@ export function updateReviewState<T extends ReviewState>(
   const reviewedAt = normalizeDate(now)
 
   if (isForgottenRating(rating)) {
+    const firstInterval = REVIEW_INTERVALS[0]
+
     return {
       ...state,
-      box: 0,
+      box: 1,
       streak: 0,
       incorrectCount: state.incorrectCount + 1,
       lastReviewedAt: reviewedAt.getTime(),
-      nextReviewAt: addTime(
+      nextReviewAt: addReviewInterval(
         reviewedAt,
-        FORGOT_RETRY_MINUTES * 60 * 1000,
+        firstInterval,
       ).getTime(),
     } as T
   }
 
   const nextBox = Math.min(
-    REVIEW_INTERVAL_DAYS.length,
+    REVIEW_INTERVALS.length,
     Math.max(1, state.box + boxAdvanceForRating(rating)),
   )
-  const intervalDays = REVIEW_INTERVAL_DAYS[nextBox - 1] ?? 1
+
+  const interval =
+    REVIEW_INTERVALS[nextBox - 1] ?? REVIEW_INTERVALS[0]
 
   return {
     ...state,
@@ -132,13 +161,12 @@ export function updateReviewState<T extends ReviewState>(
     streak: state.streak + 1,
     correctCount: state.correctCount + 1,
     lastReviewedAt: reviewedAt.getTime(),
-    nextReviewAt: addTime(
+    nextReviewAt: addReviewInterval(
       reviewedAt,
-      intervalDays * 24 * 60 * 60 * 1000,
+      interval,
     ).getTime(),
   } as T
 }
-
 export function isDue(
   state: Pick<ReviewState, 'nextReviewAt'>,
   now: Date | string | number = new Date(),
@@ -222,29 +250,3 @@ export function drawNextCard<T extends QueueCard>(
  * Adds a missed card back after one intervening card whenever possible.
  * Repeated misses therefore cause repeated appearances without an immediate
  * duplicate of the card that was just shown.
- */
-export function reinsertForgotten<T extends QueueCard>(
-  queue: StudyQueue<T>,
-  card: T,
-): StudyQueue<T> {
-  const upcoming = [...queue.upcoming]
-  const hasInterveningCard = upcoming.some(
-    (candidate) => candidate.id !== card.id,
-  )
-  const insertionIndex = hasInterveningCard
-    ? Math.min(1, upcoming.length)
-    : upcoming.length
-
-  upcoming.splice(insertionIndex, 0, card)
-  return { ...queue, upcoming }
-}
-
-export function applyRatingToQueue<T extends QueueCard>(
-  queue: StudyQueue<T>,
-  card: T,
-  rating: SchedulerRating,
-): StudyQueue<T> {
-  return isForgottenRating(rating)
-    ? reinsertForgotten(queue, card)
-    : queue
-}
