@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   ArrowLeft,
   Check,
@@ -9,12 +9,10 @@ import {
 } from 'lucide-react'
 
 import {
-  listCards,
   listDueCards,
   persistReview,
 } from '../db'
 import {
-  applyRatingToQueue,
   createStudyQueue,
   drawNextCard,
   updateReviewState,
@@ -65,7 +63,6 @@ export function StudyScreen({
   const [complete, setComplete] = useState(false)
   const [confirmExit, setConfirmExit] = useState(false)
   const [reviewedIds, setReviewedIds] = useState<Set<string>>(new Set())
-  const [forgottenIds, setForgottenIds] = useState<Set<string>>(new Set())
   const [rememberedCount, setRememberedCount] = useState(0)
   const [forgottenCount, setForgottenCount] = useState(0)
   const [answerCount, setAnswerCount] = useState(0)
@@ -82,10 +79,7 @@ export function StudyScreen({
     ? Math.round((reviewedIds.size / initialCards.length) * 100)
     : 0
 
-  const hardCards = useMemo(
-    () => initialCards.filter((card) => forgottenIds.has(card.id)),
-    [forgottenIds, initialCards],
-  )
+
 
   useEffect(() => {
     let active = true
@@ -93,8 +87,7 @@ export function StudyScreen({
       setLoading(true)
       setError('')
       try {
-        const dueCards = await listDueCards(Date.now(), deck.id)
-        const cards = dueCards.length > 0 ? dueCards : await listCards(deck.id)
+        const cards = await listDueCards(Date.now(), deck.id)
         if (!active) return
         setInitialCards(cards)
         startRound(cards)
@@ -193,7 +186,6 @@ export function StudyScreen({
       setReviewedIds((ids) => new Set(ids).add(currentCard.id))
       if (rating === 'again') {
         setForgottenCount((count) => count + 1)
-        setForgottenIds((ids) => new Set(ids).add(currentCard.id))
       } else {
         setRememberedCount((count) => count + 1)
       }
@@ -207,23 +199,7 @@ export function StudyScreen({
         lastReviewedAt: nextState.lastReviewedAt,
         nextReviewAt: nextState.nextReviewAt,
       }
-      const nextQueue = applyRatingToQueue(
-        queue,
-        updatedCard,
-        schedulerRating,
-      )
-
-      const wouldRepeatImmediately =
-        rating === 'again' &&
-        nextQueue.upcoming.length === 1 &&
-        nextQueue.upcoming[0]?.id === currentCard.id
-      if (wouldRepeatImmediately) {
-        setQueue(nextQueue)
-        setCurrentCard(null)
-        setComplete(true)
-      } else {
-        showNext(nextQueue)
-      }
+      showNext(queue)
     } catch {
       setError('Chưa lưu được lượt học. Hãy thử lại.')
     } finally {
@@ -337,7 +313,7 @@ export function StudyScreen({
                 <span className="shortcut">1</span>
                 <span>
                   <strong>Chưa nhớ</strong>
-                  <small>Ôn lại sớm</small>
+                  <small>Ôn lại sau 3 ngày</small>
                 </span>
               </button>
               <button
@@ -391,16 +367,6 @@ export function StudyScreen({
             <button className="button button-primary" type="button" onClick={onExit}>
               Về trang chủ
             </button>
-            {hardCards.length > 0 && (
-              <button
-                className="button button-secondary"
-                type="button"
-                onClick={() => startRound(hardCards)}
-              >
-                <RotateCcw />
-                Ôn lại {hardCards.length} thẻ khó
-              </button>
-            )}
           </div>
         </section>
       )}
