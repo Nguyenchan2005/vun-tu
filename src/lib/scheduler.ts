@@ -51,9 +51,7 @@ function clampRandom(random: RandomSource): number {
   return Math.max(0, Math.min(0.9999999999999999, value))
 }
 
-function addTime(date: Date, milliseconds: number): Date {
-  return new Date(date.getTime() + milliseconds)
-}
+
 
 function normalizeDate(value: Date | string | number): Date {
   const date = value instanceof Date ? new Date(value) : new Date(value)
@@ -64,7 +62,15 @@ function normalizeDate(value: Date | string | number): Date {
 
   return date
 }
+function normalizeDate(value: Date | string | number): Date {
+  const date = value instanceof Date ? new Date(value) : new Date(value)
 
+  if (Number.isNaN(date.getTime())) {
+    throw new RangeError('Thời điểm ôn tập không hợp lệ.')
+  }
+
+  return date
+}
 export function createInitialReviewState(
   now: Date | string | number = new Date(),
 ): ReviewState {
